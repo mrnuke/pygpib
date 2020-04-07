@@ -17,3 +17,21 @@ to set up and update with new kernels.
 pygpib is designed to allow the use of USB-GPIB adapters without the need for
 special drivers or kernel modules. The interface is centered around read() and
 write() calls with minimal GPIB-centric configuration and housekeeping.
+
+
+Tentative interface
+===================
+
+.. code-block:: python
+
+	import pygpib as gpib
+
+	interface = gpib.list_adapters()[0]
+
+	interface.configure(primary_address=10)
+	interface.open()
+
+	instrument = interface.get_instrument(primary_address=22)
+	instrument.configure(end_read_on_eos=True, eos_char='\n')
+
+	instrument.query('*IDN?')
