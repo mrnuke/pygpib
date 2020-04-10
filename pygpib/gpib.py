@@ -37,6 +37,8 @@ class InterfaceManager():
 
 class Interface():
 	""" Generic GPIB interface """
+	def __init__(self):
+		self.instruments = {}
 
 	def open(self, primary_address=0):
 		""" Open the interface as a GPIB controller in charge"""
@@ -48,31 +50,53 @@ class Interface():
 
 	def get_instrument(self, primary_address):
 		""" Get a handle to the instrument at 'primary_address' """
+		if primary_address > 0x1f:
+			return None
+
+		if primary_address not in self.instruments.keys():
+			new_instrument = Instrument(self, primary_address)
+			self.instruments[primary_address] = new_instrument
+
+		return self.instruments[primary_address]
+
+	def read_msg_from_instrument(self, gpib_address, **cfg):
+		""" Read data from an instrument """
+		raise NotImplementedError
+
+	def write_msg_to_instrument(self, gpib_address, data, **cfg):
+		""" Send data to the instrument """
 		raise NotImplementedError
 
 
 class Instrument():
 	""" Text I/O stream to a GPIB instrument """
-	def __init__(self, gpib_interface):
+	def __init__(self, gpib_interface, primary_address):
 		self.gpib_interface = gpib_interface
+		self.primary_address = primary_address
+		self.bus_config = {}
 
 	def configure(self, send_eoi=True, end_read_on_eoi=True,
 	              end_read_on_eos=False, eos_char='\n'):
 		""" Configure the GPIB termination for this device """
-		raise NotImplementedError
+		self.bus_config['send_eoi'] = send_eoi
+		self.bus_config['end_read_on_eoi'] = end_read_on_eoi
+		self.bus_config['end_read_on_eos'] = end_read_on_eos
+		self.bus_config['eos_char'] = ord(eos_char)
 
-	def read(self, num=None):
+	def read(self):
 		""" Read data from the instrument
 
 		Reads as much data from the device until some GPIB condition
 		ends the transmission. This can be either an EOI signal, or
 		receiving the EOS character. This is specified in 'configure()'.
 		"""
-		raise NotImplementedError
+		return self.gpib_interface.read_msg_from_instrument(
+			self.primary_address, **self.bus_config)
 
 	def write(self, out_buf):
 		""" Send data to the instrument """
-		raise NotImplementedError
+		self.gpib_interface.write_msg_to_instrument(
+			self.primary_address, out_buf, **self.bus_config)
 
 	def query(self, out_buf):
 		""" Shortcut for write() and read() pairs """
