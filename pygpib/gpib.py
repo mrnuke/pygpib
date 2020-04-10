@@ -5,7 +5,35 @@ communicating with instruments attached to a GPIB bus.
 """
 def list_adapters():
 	""" An easy way to list existing GPIB interfaces """
-	return []
+	return InterfaceManager.list_adapters()
+
+class InterfaceManager():
+	""" A helper class to manage Interface drivers """
+	interface_drivers = []
+	@classmethod
+	def add_interface_driver(cls, new_driver):
+		""" Register a new Interface driver.
+
+		Each driver is used during for device discover. Drivers
+		registered here will have their list of devices appear in
+		'list_adapters()'. Each driver should only be registered once.
+		"""
+		assert issubclass(new_driver, Interface)
+		cls.interface_drivers.append(new_driver)
+		return new_driver
+
+	@classmethod
+	def list_adapters(cls):
+		""" List adapters found by registered Interface drivers.
+
+		This returns a list of all the adapters found on the system.
+		How each device is detected is driver-specific.
+		"""
+		adapters = []
+		for driver in cls.interface_drivers:
+			adapters.extend(driver.list_adapters())
+
+		return adapters
 
 class Interface():
 	""" Generic GPIB interface """
