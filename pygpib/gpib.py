@@ -73,12 +73,13 @@ class Instrument():
 		self.bus_config = {}
 
 	def configure(self, send_eoi=True, end_read_on_eoi=True,
-	              end_read_on_eos=False, eos_char='\n'):
+	              end_read_on_eos=False, eos_char='\n', read_timeout=0.5):
 		""" Configure the GPIB termination for this device """
 		self.bus_config['send_eoi'] = send_eoi
 		self.bus_config['end_read_on_eoi'] = end_read_on_eoi
 		self.bus_config['end_read_on_eos'] = end_read_on_eos
 		self.bus_config['eos_char'] = ord(eos_char)
+		self.bus_config['read_timeout'] = read_timeout
 
 	def read(self):
 		""" Read data from the instrument
