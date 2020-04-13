@@ -33,6 +33,38 @@ async def amain():
 	print(resp)
 
 
+def test_repeated_reads(num_reads=20):
+	print('PyGPIB Repeated reads test')
+
+	adapters = gpib.list_adapters()
+	if len(adapters) == 0:
+		print('No GPIB adapter found')
+		sys.exit(os.ST_NODEV)
+
+	interface = adapters[0]
+	interface.open(primary_address=10)
+
+	num_runs = 0
+	num_fails = 0
+	while num_runs < num_reads:
+		instrument = interface.get_instrument(primary_address=22)
+		instrument.configure(end_read_on_eos=True, eos_char='\n', read_timeout=2)
+
+		resp = instrument.write('ID?')
+		resp = instrument.read()
+		resp = resp.decode('utf-8').rstrip('\r\n')
+		if len(resp) > 0:
+			print(resp, flush=True)
+		else:
+			num_fails += 1
+
+		num_runs += 1
+		if num_runs % 10 == 0:
+			print(f'Failed {num_fails}/{num_runs}')
+
+	interface.close()
+
+
 def main():
 	print('PyGPIB HP-3457A test program')
 
@@ -77,6 +109,9 @@ def main():
 
 if __name__ == '__main__':
 	do_async = 0
+	test_repeated_reads()
+	sys.exit(0)
+
 	if do_async:
 		asyncio.run(amain())
 	else:
