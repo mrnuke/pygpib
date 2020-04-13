@@ -159,6 +159,39 @@ class Agilent82357A(gpib.Interface):
 		reply = bytes(res[:-1])
 		return reply
 
+	async def aread_msg_from_instrument(self, gpib_address, **cfg):
+		""" Read a message that the instrument is dying to send """
+		num_bytes = 1024
+
+		flags = 0
+		if cfg.get('send_eoi', True):
+			flags |= _READ_XFER_FLAG_END_ON_EOI
+		if cfg.get('end_read_on_eos'):
+			flags |= _READ_XFER_FLAG_END_ON_EOS
+		eos = cfg.get('eos_char', 0)
+
+		hdr = struct.pack('<BBBBLB', 3, gpib_address, 0xff, flags,
+				  num_bytes, eos)
+		x_in = self.usb.submit_read(self.ep_in, num_bytes + 1)
+		x_out = self.usb.submit_write(self.ep_out, hdr)
+
+		await x_out.result()
+		try:
+			res = await x_in.result()
+		except usb.USBError:
+			resp = self.__abort_transfer(False)
+			self.log.error(f'Transfer ABORTED! Status={bytes(resp).hex()}')
+			line_status = self.__gpib_line_status()
+			self.log.error(f'Line status is {line_status.hex()}')
+			return bytes()
+
+		if len(res) == 0:
+			self.log.warning("ABORT: No reply to query")
+			return bytes()
+
+		reply = bytes(res[:-1])
+		return reply
+
 
 	def write_msg_to_instrument(self, gpib_address, data, **cfg):
 		flags = 0
@@ -172,6 +205,15 @@ class Agilent82357A(gpib.Interface):
 				  flags, len(data))
 		self.usb.write(self.ep_out, hdr + data)
 		self.__wait_for_write_complete()
+
+
+	async def awrite_msg_to_instrument(self, gpib_address, out, **cfg):
+
+		hdr = struct.pack('<BBBBL', 1, gpib_address, 0xff, 0x03, len(out))
+		self.usb.write(self.ep_out, hdr + bytes(out, 'utf-8'))
+		#self.__wait_for_write_complete()
+		await asyncio.wait_for(self.__wait_interrupt(), 1)
+		#await asyncio.wait_for(self.__wait_interrupt(), 1)
 
 
 	def __abort_transfer(self, flush_buffers=False):
