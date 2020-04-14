@@ -144,12 +144,14 @@ class Agilent82357A(gpib.Interface):
 		if cfg.get('end_read_on_eos'):
 			flags |= _READ_XFER_FLAG_END_ON_EOS
 		eos = cfg.get('eos_char', 0)
+		timeout_ms = int(cfg['read_timeout'] * 1000)
 
 		hdr = struct.pack('<BBBBLB', _CMD_READ, gpib_address, 0xff,
 				  flags, num_bytes, eos)
 		self.usb.write(self.ep_out, hdr)
 
-		res = self.__read(num_bytes + 1, flush_buf_on_failure=True)
+		res = self.__read(num_bytes + 1, flush_buf_on_failure=True,
+				  timeout_ms=timeout_ms)
 		if len(res) == 0:
 			self.log.warning("ABORT: No reply to query")
 			return bytes()
@@ -270,9 +272,9 @@ class Agilent82357A(gpib.Interface):
 		self.__read_reply(0x04, 0)
 
 
-	def __read(self, data_len, flush_buf_on_failure=False):
+	def __read(self, data_len, flush_buf_on_failure=False, timeout_ms=100):
 		try:
-			res = self.usb.read(self.ep_in, data_len)
+			res = self.usb.read(self.ep_in, data_len, timeout_ms)
 		except usb.USBError:
 			resp = self.__abort_transfer(flush_buf_on_failure)
 			self.log.error(f'Transfer ABORTED! Status={bytes(resp).hex()}')
