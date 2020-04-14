@@ -3,9 +3,6 @@
 This module implements a tentatve, albeit not yet functional, interface for
 communicating with instruments attached to a GPIB bus.
 """
-def list_adapters():
-	""" An easy way to list existing GPIB interfaces """
-	return InterfaceManager.list_adapters()
 
 class InterfaceManager():
 	""" A helper class to manage Interface drivers """
